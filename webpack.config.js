@@ -1,7 +1,6 @@
 module.exports = {
 	entry: "./src/main.js",
 	output: {
-		path: "dist",
 		filename: "scripts.js",
 	},
 	module: {
@@ -15,11 +14,5 @@ module.exports = {
 	      }
 	    }
 	  ]
-	},
-	devServer: {
-		historyApiFallback: true,
-		contentBase: "./dist/",
-		inline: true,
-		port : 3000
 	}
 };

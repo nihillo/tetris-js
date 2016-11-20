@@ -47,10 +47,10 @@
 	'use strict';
 
 	__webpack_require__(1);
+	__webpack_require__(2);
 	__webpack_require__(3);
 	__webpack_require__(4);
 	__webpack_require__(5);
-	__webpack_require__(6);
 
 /***/ },
 /* 1 */
@@ -59,17 +59,16 @@
 	"use strict";
 
 /***/ },
-/* 2 */,
-/* 3 */
+/* 2 */
 /***/ function(module, exports) {
 
 	"use strict";
 
 /***/ },
-/* 4 */
+/* 3 */
 /***/ function(module, exports) {
 
-	'use strict';
+	"use strict";
 
 	Object.defineProperty(exports, "__esModule", {
 		value: true
@@ -79,23 +78,21 @@
 
 	var Controller = exports.Controller = function Controller() {
 		_classCallCheck(this, Controller);
-
-		console.log('Holi');
 	};
 
 /***/ },
-/* 5 */
+/* 4 */
 /***/ function(module, exports) {
 
 	"use strict";
 
 /***/ },
-/* 6 */
+/* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ctrl = __webpack_require__(4);
+	var _ctrl = __webpack_require__(3);
 
 	var ctrl;
 

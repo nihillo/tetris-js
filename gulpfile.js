@@ -37,7 +37,7 @@ gulp.task('js', function(){
 
 // Process HTML
 gulp.task('html', function() {
-    // Copy all PHP files to dist folder
+    // Copy all HTML files to dist folder
     return gulp.src('./src/**/*.html')
         .pipe(gulp.dest('./dist/'))
         .pipe( browserSync.stream() );

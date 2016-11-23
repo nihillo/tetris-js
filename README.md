@@ -1,2 +1,2 @@
 # tetris-js
-Tetris in plain Javascript
+Tetris in plain Javascript and SVG

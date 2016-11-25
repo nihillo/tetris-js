@@ -15,7 +15,6 @@ export class Controller {
 
 		// TEST ---------------------------
 		this.game.start();
-		this.view.drawTetromino(this.game.current);
 		this.fall();
 	}
 
@@ -25,11 +24,11 @@ export class Controller {
 			switch(event.keyCode) {
 				case 65:
 				case 97:
-					this.rotate('left');
+					this.operate('rotate', 'counterclock');
 					break;
 				case 68:
 				case 100:
-					this.rotate('right');
+					this.operate('rotate', 'clock');
 					break;	
 			} 
 		});
@@ -37,13 +36,13 @@ export class Controller {
 		window.addEventListener('keydown', (event) => {
 			switch(event.key) {
 				case 'ArrowRight':
-					this.move('right');
+					this.operate('move', 'right');
 					break;
 				case 'ArrowDown':
-					this.move('down');
+					this.operate('move', 'down');
 					break;
 				case 'ArrowLeft':
-					this.move('left');
+					this.operate('move', 'left');
 					break;
 			}
 		});
@@ -53,28 +52,49 @@ export class Controller {
 	fall() {
 		window.setInterval(
 			() => {
-				this.game.current.fall();
-				this.game.loop();
-				this.view.drawTetromino(this.game.current, this.game.isNext);
-
+				this.operate('move', 'down');
 			},
 			this.game.speed * this.timeBase
 		);
 	}
 
-	move(direction) {
+	operate(operation, direction) {
+		var result = this.game.operate(operation, direction);
 
+		if (result && result.rowsUpdate) {
+			window.setTimeout (
+				() => {
+					var update = this.game.operate('rowsUpdate');
+					update.delete.forEach((brick) => {
+						this.view.delete(brick.position);
+					});
+					update.draw.forEach((brick) => {
+						this.view.draw(brick.position, brick.type);
+					});
+				},
+				100
+			);
+		}
+
+		if (result && result.nextTetromino) {
+			result = this.operate('nextTetromino');
+		}
+
+		if (result && result.delete) {
+			result.delete.forEach((brick) => {
+				this.view.delete(brick.position);
+			});
+		}
+
+		if (result && result.draw) {
+			result.draw.forEach((brick) => {
+				this.view.draw(brick.position, brick.type);
+			});
+		}
 		
-		this.game.current.move(direction);
-		this.game.loop();
-		this.view.drawTetromino(this.game.current, this.game.isNext);
-
-	}
-
-	rotate(direction) {
-		this.game.loop();
-		this.game.current.rotate(direction);
-		this.view.drawTetromino(this.game.current, this.game.isNext);
-
+		
+		if (result && result.next) {
+			this.view.drawNext(result.next);
+		}
 	}
 }

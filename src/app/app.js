@@ -1,4 +1,6 @@
 import {randInt} from '../lib/lib.js';
+import * as tetro from './tetrominoes.js';
+
 
 export class Tetris {
 	constructor() {
@@ -20,37 +22,141 @@ export class Tetris {
 	}
 
 
-	// MAIN LOOP
+	// GAME ALGORITHMS
 	start() {
 		this.running = true;
 		this.current = this.generateTetromino(this.next);
 		this.next = this.generateNextType();
-		this.loop();
 	}
 
 	stop() {
 		this.running = false;
 	}
 
-	loop() {
-		var isNext;
+	operate(operation, direction) {
 		if (this.running) {
-			if (this.current.getCollision('bottom') && !this.current.justCollided) {
-				this.isNext = true;
-				isNext = true;
-				this.current.fix();
-				this.current = null;
-			}
+			var response = {};
 
-			if (!this.current) {
-				this.current = this.generateTetromino(this.next);
-				this.next = this.generateNextType();
-			}
+			switch (operation) {
+				case 'move':
+				case 'rotate':
+					var collision = this.current.getCollision(operation, direction);
 
-			if (isNext !== true) {
-				this.isNext = false;
+					if (collision) {
+
+						if (operation == 'move' && direction == 'down') {
+							
+							this.current.fix();
+
+
+							var rowsComplete = this.board.checkRowsCompletion(this.current.rows);
+							if (rowsComplete) {
+								if (!response.delete) {response.delete = [];} 
+								rowsComplete.forEach((row) => {
+									row.cells.forEach((cell) => {
+										response.delete.push({position: cell.position});
+										cell.full = false;
+									});
+									row.update = true;
+								});
+								if (!response.rowsUpdate) {response.rowsUpdate = true;}
+							} 
+
+
+							if (!response.nextTetromino) {response.nextTetromino = true;}
+						}
+					} else {
+
+						// insert deletions in response
+						if (!response.delete) {response.delete = [];}
+						this.current.globalBricksPositions.forEach((brick) => {
+							response.delete.push({position: brick});
+						});
+
+						// do operation
+						switch (operation) {
+							case 'move':
+								this.current.move(direction);
+								break;
+							case 'rotate':
+								this.current.rotate(direction);
+								break;
+						}
+
+						// insert drawings in response
+						if (!response.draw) {response.draw = [];}
+						this.current.globalBricksPositions.forEach((brick) => {
+							response.draw.push({
+								position: brick,
+								type: this.current.constructor.name.toString()
+							});
+						});
+
+					}
+					return response;
+
+				case 'rowsUpdate':
+					var start = this.board.findLastUpdateRow();
+					var end = this.board.firstPopulatedRow;
+
+					var write = start;
+					var read = this.board.findLastNonUpdateRow();
+					
+					do {
+						if (this.board.rows[read].update) {read--;}
+						this.board.moveRow(read, write);
+						read--;
+						write--;
+					} while(read >= end);
+
+					response = this.redrawAllBetweenRows(end, start);
+
+					return response;
+
+				case 'nextTetromino':
+					if (this.board.firstPopulatedRow > 2) {
+						this.current = null;
+						this.current = this.generateTetromino(this.next);
+						this.next = this.generateNextType();
+
+						// insert drawings in response
+						if (!response.draw) {response.draw = [];}
+						this.current.globalBricksPositions.forEach((brick) => {
+							response.draw.push({
+								position: brick,
+								type: this.current.constructor.name.toString()
+							});
+						});
+						response.next = this.next;
+					} else {
+						// Do stuff on Game Over
+						this.stop();
+						console.log('Game Over');
+					} 
+					return response;
 			}
 		}
+	}
+
+
+	redrawAllBetweenRows(fromRow, toRow) {
+		var response = {
+			delete: [],
+			draw: []
+		};
+
+		var slice = this.board.rows.slice(fromRow, toRow + 1);
+
+		slice.forEach((row) => {
+			row.cells.forEach((cell) => {
+				response.delete.push({position: cell.position});
+				if (cell.full) {
+					response.draw.push({position: cell.position, type: cell.type});
+				}
+			});
+		});
+
+		return response;
 	}
 
 
@@ -63,7 +169,7 @@ export class Tetris {
 
 	generateTetromino(type = null) {
 
-		return TetrominoFactory.getInstance(type, this);
+		return tetro.TetrominoFactory.getInstance(type, this);
 	}
 }
 
@@ -77,13 +183,19 @@ class Board {
 		this.rows = [];
 
 		for (let i = 0; i < 22; i++) {
-			this.rows.push(new Row());
+			this.rows.push(new Row(i));
 		}
 	}
 
 	fixCells(cells) {
 		cells.forEach((cell) => {
-			this.rows[cell[0]].cells[cell[1]].full = true;
+			this.rows[cell.position[0]].cells[cell.position[1]] = {
+				full: true,
+				type: cell.type,
+				position: cell.position
+			};
+
+			
 		});
 	}
 
@@ -100,16 +212,66 @@ class Board {
 		return row;
 	}
 
+	checkRowsCompletion(rows) {
+		var rowsComplete = [];
 
+		rows.forEach((row) => {
+			if (this.rows[row].full) {
+				rowsComplete.push(this.rows[row]);
+			}
+		});
+
+		if (rowsComplete.length > 0) {
+			return rowsComplete;
+		} else {
+			return false;
+		}
+	}
+
+	findLastUpdateRow() {
+		var reverseRows = this.rows.slice();
+		reverseRows.reverse();
+
+		var result = reverseRows.find((row) => {
+			return row.update;
+		});
+
+		return result.rowIndex;
+	}
+
+	findLastNonUpdateRow() {
+		var reverseUntilUpdate = this.rows.slice(0, this.findLastUpdateRow());
+		reverseUntilUpdate.reverse();
+
+		var result = reverseUntilUpdate.find((row) => {
+			return !row.update;
+		});
+
+		return result.rowIndex;
+	}
+
+	moveRow(srcIndex, destIndex) {
+		this.rows[srcIndex].cells.forEach((cell, cellIndex) => {
+			this.rows[destIndex].cells[cellIndex] = new Cell(destIndex, cellIndex);
+			this.rows[destIndex].cells[cellIndex].full = this.rows[srcIndex].cells[cellIndex].full;
+			if (this.rows[srcIndex].cells[cellIndex].full) {
+				this.rows[destIndex].cells[cellIndex].type = this.rows[srcIndex].cells[cellIndex].type;
+				this.rows[srcIndex].cells[cellIndex].full = false;
+			}
+		});
+
+		this.rows[destIndex].update = false;
+	}
 }
 
 
 class Row {
-	constructor() {
+	constructor(row) {
 		this.cells = [];
+		this.rowIndex = row;
 
 		for (let i = 0; i < 10; i++) {
-			this.cells.push(new Cell());
+			this.cells.push(new Cell(row, i));
 		}
 	}
 
@@ -127,610 +289,9 @@ class Row {
 }
 
 class Cell {
-	constructor() {
+	constructor(row, cell) {
 		this.full = false;
+		this.type = null;
+		this.position = [row, cell];
 	}
-}
-
-
-
-// TETROMINOES 
-
-class Tetromino {
-	constructor(game) {
-		this.game = game;
-		// this.bricks = [];
-		this.orientationsAvailable = ['up', 'right', 'down', 'left'];
-		// this.center = [];
-		this.position = [1, 4];
-		this.orientation = this.orientationsAvailable[0];
-	}
-
-	rotate(direction) {
-		if (this.position[1] > 0 && this.position[1] < 9) {
-			var currentOrientationIndex = this.orientationsAvailable.indexOf(this.orientation);
-			switch(direction) {
-				case 'left':
-					if (currentOrientationIndex > 0) {
-						this.orientation = this.orientationsAvailable[currentOrientationIndex - 1];
-					} else if (currentOrientationIndex === 0){
-						this.orientation = this.orientationsAvailable[this.orientationsAvailable.length - 1];
-					}
-					break;
-				case 'right':
-					if (currentOrientationIndex < this.orientationsAvailable.length - 1) {
-						this.orientation = this.orientationsAvailable[currentOrientationIndex + 1];
-					} else if (currentOrientationIndex == this.orientationsAvailable.length - 1){
-						this.orientation = this.orientationsAvailable[0];
-					}
-					break;
-			}
-		}
-	}
-
-	move(direction) {
-			switch(direction) {
-				case 'right':
-					if(!this.getCollision('right')){
-						this.position[1]++;
-					}
-					break;
-				case 'down':
-					if (!this.getCollision('bottom')) {
-						this.position[0]++;
-					}
-					break;
-				case 'left':
-					if (!this.getCollision('left')) {
-						this.position[1]--;
-					}
-					break;
-			}
-	}
-
-
-	fall() {
-		var justCollided;
-		if (!this.getCollision('bottom')) {
-			this.position[0]++;
-		} else {
-			// If first collision signal after collision, switch on flag
-			// to wait fixing tetromino and generating next
-			if (!this.justCollided) {
-				justCollided = true;
-				this.justCollided = true;
-			}
-			// If second collision signal, switch of flag 
-			if (justCollided !== true) {
-				this.justCollided = false;
-			}
-		}
-	}
-
-	getCollision(edge) {
-		return this.getCollisionByHitbox(edge) && this.getCollisionByBricks(edge);
-	}
-
-
-	getCollisionByHitbox(edge) {
-		var collision = false;
-
-		switch(edge) {
-			case 'right':
-				collision = this.hitbox.right >= 9;
-				break;
-			case 'left':
-				collision = this.hitbox.left <= 0;
-				break;
-			case 'bottom':
-				var edgePosition = this.game.board.firstPopulatedRow ? this.game.board.firstPopulatedRow : 22;
-				collision = this.hitbox.bottom >= edgePosition;
-				break;
-		}
-
-		return collision;
-	}
-
-	getCollisionByBricks(edge){
-		var offset;
-
-		switch(edge) {
-			case 'right':
-				offset = [0, 1];
-				break;
-			case 'left':
-				offset = [0, -1];
-				break;
-			case 'bottom':
-				offset = [0, 0];
-				break;
-		}
-
-		return this.bricks.some((brick) => {
-			var pos = [this.position[0] + brick[0], this.position[1] + brick[1]];
-			var tested = [pos[0] + offset[0], pos[1] + offset[1]];
-
-			if (this.game.board.rows[tested[0]] && this.game.board.rows[tested[0]].cells[tested[1]]) {
-				return this.game.board.rows[tested[0]].cells[tested[1]].full;
-			} else {
-				return true;
-			}	
-		});
-	}
-
-
-
-	fix() {
-		var cells = this.bricks.map((brick) => {
-			return [this.position[0] + brick[0] - 1, this.position[1] + brick[1]];
-		});
-
-		this.game.board.fixCells(cells);
-	}
-
-}
-
-class I extends Tetromino {
-	constructor(game) {
-		super(game);
-		this.orientationsAvailable = ['up', 'right'];
-	}
-
-	get bricks() {
-		var bricks;
-		switch(this.orientation) {
-			case 'up':
-				bricks = [
-					[0, -1],
-					[0, 0],
-					[0, 1],
-					[0, 2]
-				];
-				break;
-			case 'right':
-				bricks = [
-					[-2, 0],
-					[-1, 0],
-					[0, 0],
-					[1, 0]
-				];
-				break;
-		}
-
-		return bricks;
-	}
-
-	get hitbox() {
-		var hitbox;
-		switch(this.orientation) {
-			case 'up':
-				hitbox = {
-					right: this.position[1] + 2,
-					bottom: this.position[0],
-					left: this.position[1] - 1
-				};
-				break;
-			case 'right':
-				hitbox = {
-					right: this.position[1],
-					bottom: this.position[0] + 1,
-					left: this.position[1]
-				};
-				break;
-		}
-
-		return hitbox;
-	}
-}
-
-class O extends Tetromino {
-	constructor(game) {
-		super(game);
-		this.orientationsAvailable = ['up'];
-	}
-
-	get bricks() {
-		var bricks;
-		switch(this.orientation) {
-			case 'up':
-				bricks = [
-					[-1, 0],
-					[-1, 1],
-					[0, 0],
-					[0, 1]
-				];
-				break;
-		}
-
-		return bricks;
-	}
-
-	get hitbox() {
-		var hitbox;
-		switch(this.orientation) {
-			case 'up':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0],
-					left: this.position[1]
-				};
-				break;
-		}
-
-		return hitbox;
-	}
-}
-
-class T extends Tetromino {
-	constructor(game) {
-		super(game);
-	}
-
-	get bricks() {
-		var bricks;
-		switch(this.orientation) {
-			case 'up':
-				bricks = [
-					[-1, 0],
-					[0, -1],
-					[0, 0],
-					[0, 1]
-				];
-				break;
-			case 'right':
-				bricks = [
-					[-1, 0],
-					[0, 0],
-					[0, 1],
-					[1, 0]
-				];
-				break;
-			case 'down':
-				bricks = [
-					[0, -1],
-					[0, 0],
-					[0, 1],
-					[1, 0]
-				];
-				break;
-			case 'left':
-				bricks = [
-					[-1, 0],
-					[0, -1],
-					[0, 0],
-					[1, 0]
-				];
-				break;
-		}
-
-		return bricks;
-	}
-
-	get hitbox() {
-		var hitbox;
-		switch(this.orientation) {
-			case 'up':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0],
-					left: this.position[1] - 1
-				};
-				break;
-			case 'right':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0] + 1,
-					left: this.position[1]
-				};
-				break;
-			case 'down':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0] + 1,
-					left: this.position[1] - 1
-				};
-				break;
-			case 'left':
-				hitbox = {
-					right: this.position[1],
-					bottom: this.position[0] + 1,
-					left: this.position[1] - 1
-				};
-				break;
-		}
-
-		return hitbox;
-	}
-}
-
-class S extends Tetromino {
-	constructor(game) {
-		super(game);
-		this.orientationsAvailable = ['up', 'right'];
-	}
-
-	get bricks() {
-		var bricks;
-		switch(this.orientation) {
-			case 'up':
-				bricks = [
-					[-1, 0],
-					[-1, 1],
-					[0, -1],
-					[0, 0]
-				];
-				break;
-			case 'right':
-				bricks = [
-					[-1, 0],
-					[0, 0],
-					[0, 1],
-					[1, 1]
-				];
-				break;
-		}
-
-		return bricks;
-	}
-
-	get hitbox() {
-		var hitbox;
-		switch(this.orientation) {
-			case 'up':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0],
-					left: this.position[1] - 1
-				};
-				break;
-			case 'right':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0] + 1,
-					left: this.position[1]
-				};
-				break;
-		}
-
-		return hitbox;
-	}
-}
-
-class Z extends Tetromino {
-	constructor(game) {
-		super(game);
-		this.orientationsAvailable = ['up', 'right'];
-	}
-
-	get bricks() {
-		var bricks;
-		switch(this.orientation) {
-			case 'up':
-				bricks = [
-					[-1, -1],
-					[-1, 0],
-					[0, 0],
-					[0, 1]
-				];
-				break;
-			case 'right':
-				bricks = [
-					[-1, 1],
-					[0, 0],
-					[0, 1],
-					[1, 0]
-				];
-				break;
-		}
-
-		return bricks;
-	}
-
-	get hitbox() {
-		var hitbox;
-		switch(this.orientation) {
-			case 'up':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0],
-					left: this.position[1] - 1
-				};
-				break;
-			case 'right':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0] + 1,
-					left: this.position[1]
-				};
-				break;
-		}
-
-		return hitbox;
-	}
-}
-
-class J extends Tetromino {
-	constructor(game) {
-		super(game);
-	}
-
-	get bricks() {
-		var bricks;
-		switch(this.orientation) {
-			case 'up':
-				bricks = [
-					[-1, -1],
-					[0, -1],
-					[0, 0],
-					[0, 1]
-				];
-				break;
-			case 'right':
-				bricks = [
-					[-1, 0],
-					[-1, 1],
-					[0, 0],
-					[1, 0]
-				];
-				break;
-			case 'down':
-				bricks = [
-					[0, -1],
-					[0, 0],
-					[0, 1],
-					[1, 1]
-				];
-				break;
-			case 'left':
-				bricks = [
-					[-1, 0],
-					[0, 0],
-					[1, 0],
-					[1, -1]
-				];
-				break;
-		}
-
-		return bricks;
-	}
-
-	get hitbox() {
-		var hitbox;
-		switch(this.orientation) {
-			case 'up':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0],
-					left: this.position[1] - 1
-				};
-				break;
-			case 'right':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0] + 1,
-					left: this.position[1]
-				};
-				break;
-			case 'down':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0] + 1,
-					left: this.position[1] - 1
-				};
-				break;
-			case 'left':
-				hitbox = {
-					right: this.position[1],
-					bottom: this.position[0] + 1,
-					left: this.position[1] - 1
-				};
-				break;
-		}
-
-		return hitbox;
-	}
-}
-
-class L extends Tetromino {
-	constructor(game) {
-		super(game);
-	}
-
-	get bricks() {
-		var bricks;
-		switch(this.orientation) {
-			case 'up':
-				bricks = [
-					[-1, 1],
-					[0, -1],
-					[0, 0],
-					[0, 1]
-				];
-				break;
-			case 'right':
-				bricks = [
-					[-1, 0],
-					[0, 0],
-					[1, 0],
-					[1, 1],
-				];
-				break;
-			case 'down':
-				bricks = [
-					[0, -1],
-					[0, 0],
-					[0, 1],
-					[1, -1]
-				];
-				break;
-			case 'left':
-				bricks = [
-					[-1, -1],
-					[-1, 0],
-					[0, 0],
-					[1, 0]
-				];
-				break;
-		}
-
-		return bricks;
-	}
-
-	get hitbox() {
-		var hitbox;
-		switch(this.orientation) {
-			case 'up':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0],
-					left: this.position[1] - 1
-				};
-				break;
-			case 'right':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0] + 1,
-					left: this.position[1]
-				};
-				break;
-			case 'down':
-				hitbox = {
-					right: this.position[1] + 1,
-					bottom: this.position[0] + 1,
-					left: this.position[1] - 1
-				};
-				break;
-			case 'left':
-				hitbox = {
-					right: this.position[1],
-					bottom: this.position[0] + 1,
-					left: this.position[1] - 1
-				};
-				break;
-		}
-
-		return hitbox;
-	}
-}
-
-
-class TetrominoFactory {
-    static getInstance(type, game) {
-    	switch(type) {
-    		case 'I':
-    			return new I(game);
-    		case 'O':
-    			return new O(game);
-    		case 'T':
-    			return new T(game);
-    		case 'S':
-    			return new S(game);
-    		case 'Z':
-    			return new Z(game);
-    		case 'J':
-    			return new J(game);
-    		case 'L':
-    			return new L(game);
-    	}
-    }
 }

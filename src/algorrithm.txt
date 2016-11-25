@@ -1,0 +1,59 @@
+                Ctrl.movement
+                    .fall
+                    .rotation
+                    |----> Game.loop
+                            |----> checkCollision(movement, direction)
+                                                 (rotation, direction) 
+                                    |
+                                    |
+                                    |
+                                    |
+
+                                    |---- TRUE ----> is movement && direction is down
+                                                        |---- true ----> fix()
+                                                                           |----> checkRow (for each)
+                                                                                    |---- true ---->deleteRow
+                                                                                                    pushDownUpper
+                    |<-- return deleted cells pos, refilled cells pos type -------------------------------|
+<-- delete cells ---|                    
+<-- draw cells -----|
+                                                                           |----> generateNew
+                    |<-- return cells pos, tetrom type --------------------------------|
+<-- draw new -------|
+                                                                           |----> generateNext
+                    |<-- return tetrom type -------------------------------------------|
+<-- draw next ------|
+
+
+
+
+                                    |---- FALSE ----> move(direction)
+                                                      rotate(rotate)
+                    |<-- return cells pos, tetrom type ----|
+<-- delete prev ----|
+<-- draw new -------|
+
+
+entrada:
+    tipo de operación (move, rotate)
+    dirección de la operación; move: (right, left, down), rotate: (clock, counterclock)
+
+
+formato return:
+    {
+        delete: [
+            {position: [y, x]}, 
+            {}, 
+            ...
+        ],
+        draw: [
+            {position: [y, x], type: 'X'}, 
+            {}, 
+            ...
+        ],
+        next: 'X'
+    }
+
+
+
+board.cells deben contener tipo de tetrominó si full

@@ -33,108 +33,144 @@ export class Tetris {
 		this.running = false;
 	}
 
-	operate(operation, direction) {
+	move(direction) {
+		
+		if (this.running) {
+			
+			var response = {};
+
+			var collision = this.current.getCollision('move', direction);
+
+			if (collision) {
+
+				if (direction == 'down') {
+					
+					this.current.fix();
+
+
+					var rowsComplete = this.board.checkRowsCompletion(this.current.rows);
+					if (rowsComplete) {
+						if (!response.delete) {response.delete = [];} 
+						rowsComplete.forEach((row) => {
+							row.cells.forEach((cell) => {
+								response.delete.push({position: cell.position});
+								cell.full = false;
+							});
+							row.update = true;
+						});
+						if (!response.rowsUpdate) {response.rowsUpdate = true;}
+					} 
+
+
+					if (!response.nextTetromino) {response.nextTetromino = true;}
+				}
+			} else {
+
+				// insert deletions in response
+				if (!response.delete) {response.delete = [];}
+				this.current.globalBricksPositions.forEach((brick) => {
+					response.delete.push({position: brick});
+				});
+
+
+				this.current.move(direction);
+
+
+				// insert drawings in response
+				if (!response.draw) {response.draw = [];}
+				this.current.globalBricksPositions.forEach((brick) => {
+					response.draw.push({
+						position: brick,
+						type: this.current.constructor.name.toString()
+					});
+				});
+
+			}
+			
+			return response;
+		} 
+	}
+
+	rotate(direction) {
+
 		if (this.running) {
 			var response = {};
 
-			switch (operation) {
-				case 'move':
-				case 'rotate':
-					var collision = this.current.getCollision(operation, direction);
+			var collision = this.current.getCollision('rotate', direction);
 
-					if (collision) {
+			if (!collision) {
 
-						if (operation == 'move' && direction == 'down') {
-							
-							this.current.fix();
+				// insert deletions in response
+				if (!response.delete) {response.delete = [];}
+				this.current.globalBricksPositions.forEach((brick) => {
+					response.delete.push({position: brick});
+				});
 
+				// do operation
+				this.current.rotate(direction);
 
-							var rowsComplete = this.board.checkRowsCompletion(this.current.rows);
-							if (rowsComplete) {
-								if (!response.delete) {response.delete = [];} 
-								rowsComplete.forEach((row) => {
-									row.cells.forEach((cell) => {
-										response.delete.push({position: cell.position});
-										cell.full = false;
-									});
-									row.update = true;
-								});
-								if (!response.rowsUpdate) {response.rowsUpdate = true;}
-							} 
+				// insert drawings in response
+				if (!response.draw) {response.draw = [];}
+				this.current.globalBricksPositions.forEach((brick) => {
+					response.draw.push({
+						position: brick,
+						type: this.current.constructor.name.toString()
+					});
+				});
 
+			}	
 
-							if (!response.nextTetromino) {response.nextTetromino = true;}
-						}
-					} else {
+			return response;			
+		}
+	}
 
-						// insert deletions in response
-						if (!response.delete) {response.delete = [];}
-						this.current.globalBricksPositions.forEach((brick) => {
-							response.delete.push({position: brick});
-						});
+	rowsUpdate() {
+		if (this.running) {
+			var response = {};
 
-						// do operation
-						switch (operation) {
-							case 'move':
-								this.current.move(direction);
-								break;
-							case 'rotate':
-								this.current.rotate(direction);
-								break;
-						}
+			var start = this.board.findLastUpdateRow();
+			var end = this.board.firstPopulatedRow;
 
-						// insert drawings in response
-						if (!response.draw) {response.draw = [];}
-						this.current.globalBricksPositions.forEach((brick) => {
-							response.draw.push({
-								position: brick,
-								type: this.current.constructor.name.toString()
-							});
-						});
+			var write = start;
+			var read = this.board.findLastNonUpdateRow();
+			
+			do {
+				if (this.board.rows[read].update) {read--;}
+				this.board.moveRow(read, write);
+				read--;
+				write--;
+			} while(write >= end);
 
-					}
-					return response;
+			response = this.redrawAllBetweenRows(end, start);
 
-				case 'rowsUpdate':
-					var start = this.board.findLastUpdateRow();
-					var end = this.board.firstPopulatedRow;
+			return response;
+		}
+	}
 
-					var write = start;
-					var read = this.board.findLastNonUpdateRow();
-					
-					do {
-						if (this.board.rows[read].update) {read--;}
-						this.board.moveRow(read, write);
-						read--;
-						write--;
-					} while(read >= end);
+	nextTetromino() {
+		if (this.running) {
+			var response = {};
 
-					response = this.redrawAllBetweenRows(end, start);
+			if (this.board.firstPopulatedRow > 2) {
+				this.current = null;
+				this.current = this.generateTetromino(this.next);
+				this.next = this.generateNextType();
 
-					return response;
-
-				case 'nextTetromino':
-					if (this.board.firstPopulatedRow > 2) {
-						this.current = null;
-						this.current = this.generateTetromino(this.next);
-						this.next = this.generateNextType();
-
-						// insert drawings in response
-						if (!response.draw) {response.draw = [];}
-						this.current.globalBricksPositions.forEach((brick) => {
-							response.draw.push({
-								position: brick,
-								type: this.current.constructor.name.toString()
-							});
-						});
-						response.next = this.next;
-					} else {
-						// Do stuff on Game Over
-						this.stop();
-						console.log('Game Over');
-					} 
-					return response;
-			}
+				// insert drawings in response
+				if (!response.draw) {response.draw = [];}
+				this.current.globalBricksPositions.forEach((brick) => {
+					response.draw.push({
+						position: brick,
+						type: this.current.constructor.name.toString()
+					});
+				});
+				response.next = this.next;
+			} else {
+				// Do stuff on Game Over
+				this.stop();
+				console.log('Game Over');
+			} 
+			return response;
 		}
 	}
 

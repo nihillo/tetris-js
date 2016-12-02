@@ -20,18 +20,6 @@ export class Controller {
 
 	// CONTROLS
 	setControls() {
-		window.addEventListener('keypress', (event) => {
-			switch(event.keyCode) {
-				case 65:
-				case 97:
-					this.operate('rotate', 'counterclock');
-					break;
-				case 68:
-				case 100:
-					this.operate('rotate', 'clock');
-					break;	
-			} 
-		});
 
 		window.addEventListener('keydown', (event) => {
 			switch(event.key) {
@@ -45,6 +33,17 @@ export class Controller {
 					this.operate('move', 'left');
 					break;
 			}
+
+			switch(event.keyCode) {
+				case 65:
+				case 97:
+					this.operate('rotate', 'counterclock');
+					break;
+				case 68:
+				case 100:
+					this.operate('rotate', 'clock');
+					break;	
+			} 
 		});
 	}
 
@@ -59,12 +58,24 @@ export class Controller {
 	}
 
 	operate(operation, direction) {
-		var result = this.game.operate(operation, direction);
+		var result;
+
+		switch (operation) {
+			case 'move':
+				result = this.game.move(direction);
+				break;
+			case 'rotate':
+				result = this.game.rotate(direction);
+				break;
+			case 'nextTetromino':
+				result = this.game.nextTetromino();
+		}
+		
 
 		if (result && result.rowsUpdate) {
 			window.setTimeout (
 				() => {
-					var update = this.game.operate('rowsUpdate');
+					var update = this.game.rowsUpdate();
 					update.delete.forEach((brick) => {
 						this.view.delete(brick.position);
 					});
@@ -72,7 +83,7 @@ export class Controller {
 						this.view.draw(brick.position, brick.type);
 					});
 				},
-				100
+				200
 			);
 		}
 

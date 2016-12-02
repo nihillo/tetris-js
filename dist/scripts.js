@@ -823,122 +823,164 @@
 				this.running = false;
 			}
 		}, {
-			key: 'operate',
-			value: function operate(operation, direction) {
+			key: 'move',
+			value: function move(direction) {
 				var _this = this;
+
+				if (this.running) {
+
+					var response = {};
+
+					var collision = this.current.getCollision('move', direction);
+
+					if (collision) {
+
+						if (direction == 'down') {
+
+							this.current.fix();
+
+							var rowsComplete = this.board.checkRowsCompletion(this.current.rows);
+							if (rowsComplete) {
+								if (!response.delete) {
+									response.delete = [];
+								}
+								rowsComplete.forEach(function (row) {
+									row.cells.forEach(function (cell) {
+										response.delete.push({ position: cell.position });
+										cell.full = false;
+									});
+									row.update = true;
+								});
+								if (!response.rowsUpdate) {
+									response.rowsUpdate = true;
+								}
+							}
+
+							if (!response.nextTetromino) {
+								response.nextTetromino = true;
+							}
+						}
+					} else {
+
+						// insert deletions in response
+						if (!response.delete) {
+							response.delete = [];
+						}
+						this.current.globalBricksPositions.forEach(function (brick) {
+							response.delete.push({ position: brick });
+						});
+
+						this.current.move(direction);
+
+						// insert drawings in response
+						if (!response.draw) {
+							response.draw = [];
+						}
+						this.current.globalBricksPositions.forEach(function (brick) {
+							response.draw.push({
+								position: brick,
+								type: _this.current.constructor.name.toString()
+							});
+						});
+					}
+
+					return response;
+				}
+			}
+		}, {
+			key: 'rotate',
+			value: function rotate(direction) {
+				var _this2 = this;
 
 				if (this.running) {
 					var response = {};
 
-					switch (operation) {
-						case 'move':
-						case 'rotate':
-							var collision = this.current.getCollision(operation, direction);
+					var collision = this.current.getCollision('rotate', direction);
 
-							if (collision) {
+					if (!collision) {
 
-								if (operation == 'move' && direction == 'down') {
+						// insert deletions in response
+						if (!response.delete) {
+							response.delete = [];
+						}
+						this.current.globalBricksPositions.forEach(function (brick) {
+							response.delete.push({ position: brick });
+						});
 
-									this.current.fix();
+						// do operation
+						this.current.rotate(direction);
 
-									var rowsComplete = this.board.checkRowsCompletion(this.current.rows);
-									if (rowsComplete) {
-										if (!response.delete) {
-											response.delete = [];
-										}
-										rowsComplete.forEach(function (row) {
-											row.cells.forEach(function (cell) {
-												response.delete.push({ position: cell.position });
-												cell.full = false;
-											});
-											row.update = true;
-										});
-										if (!response.rowsUpdate) {
-											response.rowsUpdate = true;
-										}
-									}
-
-									if (!response.nextTetromino) {
-										response.nextTetromino = true;
-									}
-								}
-							} else {
-
-								// insert deletions in response
-								if (!response.delete) {
-									response.delete = [];
-								}
-								this.current.globalBricksPositions.forEach(function (brick) {
-									response.delete.push({ position: brick });
-								});
-
-								// do operation
-								switch (operation) {
-									case 'move':
-										this.current.move(direction);
-										break;
-									case 'rotate':
-										this.current.rotate(direction);
-										break;
-								}
-
-								// insert drawings in response
-								if (!response.draw) {
-									response.draw = [];
-								}
-								this.current.globalBricksPositions.forEach(function (brick) {
-									response.draw.push({
-										position: brick,
-										type: _this.current.constructor.name.toString()
-									});
-								});
-							}
-							return response;
-
-						case 'rowsUpdate':
-							var start = this.board.findLastUpdateRow();
-							var end = this.board.firstPopulatedRow;
-
-							var write = start;
-							var read = this.board.findLastNonUpdateRow();
-
-							do {
-								if (this.board.rows[read].update) {
-									read--;
-								}
-								this.board.moveRow(read, write);
-								read--;
-								write--;
-							} while (read >= end);
-
-							response = this.redrawAllBetweenRows(end, start);
-
-							return response;
-
-						case 'nextTetromino':
-							if (this.board.firstPopulatedRow > 2) {
-								this.current = null;
-								this.current = this.generateTetromino(this.next);
-								this.next = this.generateNextType();
-
-								// insert drawings in response
-								if (!response.draw) {
-									response.draw = [];
-								}
-								this.current.globalBricksPositions.forEach(function (brick) {
-									response.draw.push({
-										position: brick,
-										type: _this.current.constructor.name.toString()
-									});
-								});
-								response.next = this.next;
-							} else {
-								// Do stuff on Game Over
-								this.stop();
-								console.log('Game Over');
-							}
-							return response;
+						// insert drawings in response
+						if (!response.draw) {
+							response.draw = [];
+						}
+						this.current.globalBricksPositions.forEach(function (brick) {
+							response.draw.push({
+								position: brick,
+								type: _this2.current.constructor.name.toString()
+							});
+						});
 					}
+
+					return response;
+				}
+			}
+		}, {
+			key: 'rowsUpdate',
+			value: function rowsUpdate() {
+				if (this.running) {
+					var response = {};
+
+					var start = this.board.findLastUpdateRow();
+					var end = this.board.firstPopulatedRow;
+
+					var write = start;
+					var read = this.board.findLastNonUpdateRow();
+
+					do {
+						if (this.board.rows[read].update) {
+							read--;
+						}
+						this.board.moveRow(read, write);
+						read--;
+						write--;
+					} while (write >= end);
+
+					response = this.redrawAllBetweenRows(end, start);
+
+					return response;
+				}
+			}
+		}, {
+			key: 'nextTetromino',
+			value: function nextTetromino() {
+				var _this3 = this;
+
+				if (this.running) {
+					var response = {};
+
+					if (this.board.firstPopulatedRow > 2) {
+						this.current = null;
+						this.current = this.generateTetromino(this.next);
+						this.next = this.generateNextType();
+
+						// insert drawings in response
+						if (!response.draw) {
+							response.draw = [];
+						}
+						this.current.globalBricksPositions.forEach(function (brick) {
+							response.draw.push({
+								position: brick,
+								type: _this3.current.constructor.name.toString()
+							});
+						});
+						response.next = this.next;
+					} else {
+						// Do stuff on Game Over
+						this.stop();
+						console.log('Game Over');
+					}
+					return response;
 				}
 			}
 		}, {
@@ -1002,10 +1044,10 @@
 		_createClass(Board, [{
 			key: 'fixCells',
 			value: function fixCells(cells) {
-				var _this2 = this;
+				var _this4 = this;
 
 				cells.forEach(function (cell) {
-					_this2.rows[cell.position[0]].cells[cell.position[1]] = {
+					_this4.rows[cell.position[0]].cells[cell.position[1]] = {
 						full: true,
 						type: cell.type,
 						position: cell.position
@@ -1015,13 +1057,13 @@
 		}, {
 			key: 'checkRowsCompletion',
 			value: function checkRowsCompletion(rows) {
-				var _this3 = this;
+				var _this5 = this;
 
 				var rowsComplete = [];
 
 				rows.forEach(function (row) {
-					if (_this3.rows[row].full) {
-						rowsComplete.push(_this3.rows[row]);
+					if (_this5.rows[row].full) {
+						rowsComplete.push(_this5.rows[row]);
 					}
 				});
 
@@ -1058,14 +1100,14 @@
 		}, {
 			key: 'moveRow',
 			value: function moveRow(srcIndex, destIndex) {
-				var _this4 = this;
+				var _this6 = this;
 
 				this.rows[srcIndex].cells.forEach(function (cell, cellIndex) {
-					_this4.rows[destIndex].cells[cellIndex] = new Cell(destIndex, cellIndex);
-					_this4.rows[destIndex].cells[cellIndex].full = _this4.rows[srcIndex].cells[cellIndex].full;
-					if (_this4.rows[srcIndex].cells[cellIndex].full) {
-						_this4.rows[destIndex].cells[cellIndex].type = _this4.rows[srcIndex].cells[cellIndex].type;
-						_this4.rows[srcIndex].cells[cellIndex].full = false;
+					_this6.rows[destIndex].cells[cellIndex] = new Cell(destIndex, cellIndex);
+					_this6.rows[destIndex].cells[cellIndex].full = _this6.rows[srcIndex].cells[cellIndex].full;
+					if (_this6.rows[srcIndex].cells[cellIndex].full) {
+						_this6.rows[destIndex].cells[cellIndex].type = _this6.rows[srcIndex].cells[cellIndex].type;
+						_this6.rows[srcIndex].cells[cellIndex].full = false;
 					}
 				});
 
@@ -1173,19 +1215,6 @@
 			value: function setControls() {
 				var _this = this;
 
-				window.addEventListener('keypress', function (event) {
-					switch (event.keyCode) {
-						case 65:
-						case 97:
-							_this.operate('rotate', 'counterclock');
-							break;
-						case 68:
-						case 100:
-							_this.operate('rotate', 'clock');
-							break;
-					}
-				});
-
 				window.addEventListener('keydown', function (event) {
 					switch (event.key) {
 						case 'ArrowRight':
@@ -1196,6 +1225,17 @@
 							break;
 						case 'ArrowLeft':
 							_this.operate('move', 'left');
+							break;
+					}
+
+					switch (event.keyCode) {
+						case 65:
+						case 97:
+							_this.operate('rotate', 'counterclock');
+							break;
+						case 68:
+						case 100:
+							_this.operate('rotate', 'clock');
 							break;
 					}
 				});
@@ -1217,18 +1257,29 @@
 			value: function operate(operation, direction) {
 				var _this3 = this;
 
-				var result = this.game.operate(operation, direction);
+				var result;
+
+				switch (operation) {
+					case 'move':
+						result = this.game.move(direction);
+						break;
+					case 'rotate':
+						result = this.game.rotate(direction);
+						break;
+					case 'nextTetromino':
+						result = this.game.nextTetromino();
+				}
 
 				if (result && result.rowsUpdate) {
 					window.setTimeout(function () {
-						var update = _this3.game.operate('rowsUpdate');
+						var update = _this3.game.rowsUpdate();
 						update.delete.forEach(function (brick) {
 							_this3.view.delete(brick.position);
 						});
 						update.draw.forEach(function (brick) {
 							_this3.view.draw(brick.position, brick.type);
 						});
-					}, 100);
+					}, 200);
 				}
 
 				if (result && result.nextTetromino) {

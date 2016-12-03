@@ -1049,7 +1049,7 @@
 		}, {
 			key: 'level',
 			get: function get() {
-				return this.score ? Math.floor(this.score / 128) : 0;
+				return this.score ? Math.floor(this.score / 64) : 0;
 			}
 		}, {
 			key: 'speed',

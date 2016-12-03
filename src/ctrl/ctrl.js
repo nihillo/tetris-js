@@ -10,41 +10,52 @@ export class Controller {
 		
 
 		this.setControls();
-		
-	
 
-		// INIT GAME ---------------------------
-		this.game.start();
-		this.operate('nextTetromino');
-		this.cycle = this.fall();
+		// this.start();
 	}
 
 	// CONTROLS
 	setControls() {
 
 		window.addEventListener('keydown', (event) => {
-			switch(event.key) {
-				case 'ArrowRight':
-					this.operate('move', 'right');
-					break;
-				case 'ArrowDown':
-					this.operate('move', 'down');
-					break;
-				case 'ArrowLeft':
-					this.operate('move', 'left');
-					break;
-			}
+			if (!this.paused) {
+				switch(event.key) {
+					case 'ArrowRight':
+						this.operate('move', 'right');
+						break;
+					case 'ArrowDown':
+						this.operate('move', 'down');
+						break;
+					case 'ArrowLeft':
+						this.operate('move', 'left');
+						break;
+				}
 
-			switch(event.keyCode) {
-				case 65:
-				case 97:
-					this.operate('rotate', 'counterclock');
-					break;
-				case 68:
-				case 100:
-					this.operate('rotate', 'clock');
-					break;	
-			} 
+				switch(event.keyCode) {
+					case 65:
+					case 97:
+						this.operate('rotate', 'counterclock');
+						break;
+					case 68:
+					case 100:
+						this.operate('rotate', 'clock');
+						break;
+
+					case 32:
+						this.start();
+						break;
+
+					case 27: 
+						this.pause();
+						break;
+				} 
+			} else {
+				switch(event.keyCode) {
+					case 27: 
+						this.resume();
+						break;
+				} 
+			}
 		});
 	}
 
@@ -84,6 +95,7 @@ export class Controller {
 		if (result && result.finish) {
 			this.view.drawMessage('Game over');
 			this.view.stopMusic();
+			this.view.playEffect('game-over');
 			this.game.stop();
 			this.stopFall();
 		}
@@ -93,12 +105,14 @@ export class Controller {
 				() => {
 					var update = this.game.rowsUpdate();
 					update.delete.forEach((brick) => {
-						// console.log('on ctrl: ' + brick.position[0] + brick.position[1]);
 						this.view.delete(brick.position);
 					});
 					update.draw.forEach((brick) => {
 						this.view.draw(brick.position, brick.type);
 					});
+					if (!update.levelup) {
+						this.view.playEffect('line');
+					}
 				},
 				200
 			);
@@ -123,6 +137,7 @@ export class Controller {
 		if (result && result.levelup) {
 			this.view.drawLevel(result.level);
 			this.view.drawMessage('Level up');
+			this.view.playEffect('levelup');
 			this.resetFall();
 		}
 
@@ -135,7 +150,36 @@ export class Controller {
 		}
 
 		if (result && result.nextTetromino) {
+			if (!result.levelup && !result.finish) {
+				this.view.playEffect('hit');
+				this.gameover = true;
+			}
 			result = this.operate('nextTetromino');
 		}
+	}
+
+
+	start() {
+		if (!this.gameover) {
+			this.view.dismissModal();
+			this.game.start();
+			this.view.setMusic(this.game.trackList[0]);
+			this.operate('nextTetromino');
+			this.cycle = this.fall();
+		}
+	}
+
+	pause() {
+		this.paused = true;
+		this.stopFall();
+		this.view.musicPlayer.pause();
+		this.view.drawMessage('Pause');
+	}
+
+	resume() {
+		this.paused = false;
+		this.resetFall();
+		this.view.musicPlayer.play();
+		this.view.undrawMessage();
 	}
 }

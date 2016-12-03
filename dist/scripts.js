@@ -1049,7 +1049,7 @@
 		}, {
 			key: 'level',
 			get: function get() {
-				return this.score ? Math.floor(this.score / 16) : 0;
+				return this.score ? Math.floor(this.score / 128) : 0;
 			}
 		}, {
 			key: 'speed',
@@ -1236,10 +1236,7 @@
 
 			this.setControls();
 
-			// INIT GAME ---------------------------
-			this.game.start();
-			this.operate('nextTetromino');
-			this.cycle = this.fall();
+			// this.start();
 		}
 
 		// CONTROLS
@@ -1251,27 +1248,43 @@
 				var _this = this;
 
 				window.addEventListener('keydown', function (event) {
-					switch (event.key) {
-						case 'ArrowRight':
-							_this.operate('move', 'right');
-							break;
-						case 'ArrowDown':
-							_this.operate('move', 'down');
-							break;
-						case 'ArrowLeft':
-							_this.operate('move', 'left');
-							break;
-					}
+					if (!_this.paused) {
+						switch (event.key) {
+							case 'ArrowRight':
+								_this.operate('move', 'right');
+								break;
+							case 'ArrowDown':
+								_this.operate('move', 'down');
+								break;
+							case 'ArrowLeft':
+								_this.operate('move', 'left');
+								break;
+						}
 
-					switch (event.keyCode) {
-						case 65:
-						case 97:
-							_this.operate('rotate', 'counterclock');
-							break;
-						case 68:
-						case 100:
-							_this.operate('rotate', 'clock');
-							break;
+						switch (event.keyCode) {
+							case 65:
+							case 97:
+								_this.operate('rotate', 'counterclock');
+								break;
+							case 68:
+							case 100:
+								_this.operate('rotate', 'clock');
+								break;
+
+							case 32:
+								_this.start();
+								break;
+
+							case 27:
+								_this.pause();
+								break;
+						}
+					} else {
+						switch (event.keyCode) {
+							case 27:
+								_this.resume();
+								break;
+						}
 					}
 				});
 			}
@@ -1319,6 +1332,7 @@
 				if (result && result.finish) {
 					this.view.drawMessage('Game over');
 					this.view.stopMusic();
+					this.view.playEffect('game-over');
 					this.game.stop();
 					this.stopFall();
 				}
@@ -1327,12 +1341,14 @@
 					window.setTimeout(function () {
 						var update = _this3.game.rowsUpdate();
 						update.delete.forEach(function (brick) {
-							// console.log('on ctrl: ' + brick.position[0] + brick.position[1]);
 							_this3.view.delete(brick.position);
 						});
 						update.draw.forEach(function (brick) {
 							_this3.view.draw(brick.position, brick.type);
 						});
+						if (!update.levelup) {
+							_this3.view.playEffect('line');
+						}
 					}, 200);
 				}
 
@@ -1355,6 +1371,7 @@
 				if (result && result.levelup) {
 					this.view.drawLevel(result.level);
 					this.view.drawMessage('Level up');
+					this.view.playEffect('levelup');
 					this.resetFall();
 				}
 
@@ -1367,8 +1384,39 @@
 				}
 
 				if (result && result.nextTetromino) {
+					if (!result.levelup && !result.finish) {
+						this.view.playEffect('hit');
+						this.gameover = true;
+					}
 					result = this.operate('nextTetromino');
 				}
+			}
+		}, {
+			key: 'start',
+			value: function start() {
+				if (!this.gameover) {
+					this.view.dismissModal();
+					this.game.start();
+					this.view.setMusic(this.game.trackList[0]);
+					this.operate('nextTetromino');
+					this.cycle = this.fall();
+				}
+			}
+		}, {
+			key: 'pause',
+			value: function pause() {
+				this.paused = true;
+				this.stopFall();
+				this.view.musicPlayer.pause();
+				this.view.drawMessage('Pause');
+			}
+		}, {
+			key: 'resume',
+			value: function resume() {
+				this.paused = false;
+				this.resetFall();
+				this.view.musicPlayer.play();
+				this.view.undrawMessage();
 			}
 		}]);
 
@@ -1393,7 +1441,16 @@
 		function View() {
 			_classCallCheck(this, View);
 
-			this.cellSize = 35;
+			var windowHeigth = window.innerHeight;
+
+			this.cellSize = windowHeigth / 26;
+			document.body.style.fontSize = this.cellSize * 0.5 + 'px';
+
+			this.modal = document.getElementById('modal');
+			this.modal.style.bottom = this.cellSize * 21 + 'px';
+			this.modal.style.width = this.cellSize * 10 + 'px';
+			this.modal.style.height = this.cellSize * 21 + 'px';
+
 			this.colors = {
 				'I': 'cyan',
 				'O': 'yellow',
@@ -1426,6 +1483,9 @@
 
 			this.musicPlayer = document.getElementById('music');
 			this.track = document.getElementById('music-track');
+
+			this.effectPlayer = document.getElementById('effects');
+			this.effect = document.getElementById('effect-src');
 
 			// setTimeout(() => {this.stopMusic();}, 5000);
 		}
@@ -1618,19 +1678,37 @@
 				this.musicPlayer.currentTime = 0;
 			}
 		}, {
+			key: 'playEffect',
+			value: function playEffect(effect) {
+				this.effect.src = 'assets/' + effect + '.mp3';
+				this.effectPlayer.load();
+				this.effectPlayer.play();
+			}
+		}, {
 			key: 'drawMessage',
 			value: function drawMessage(message) {
 				var _this = this;
 
 				this.messages.innerHTML = message;
 
-				if (message != 'Game over') {
+				if (message != 'Game over' && message != 'Pause') {
 					this.messages.className += ' fadeout';
+
 					window.setTimeout(function () {
-						_this.messages.innerHTML = '';
-						_this.messages.className = 'messages';
+						_this.undrawMessage();
 					}, 2000);
 				}
+			}
+		}, {
+			key: 'undrawMessage',
+			value: function undrawMessage() {
+				this.messages.innerHTML = '';
+				this.messages.className = 'messages';
+			}
+		}, {
+			key: 'dismissModal',
+			value: function dismissModal() {
+				this.modal.className += ' hide';
 			}
 		}]);
 

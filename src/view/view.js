@@ -1,6 +1,15 @@
 export class View {
 	constructor() {
-		this.cellSize = 35;
+		var windowHeigth = window.innerHeight;
+
+		this.cellSize = windowHeigth / 26;
+		document.body.style.fontSize = this.cellSize * 0.5 + 'px';
+
+		this.modal = document.getElementById('modal');
+		this.modal.style.bottom = this.cellSize * 21 + 'px';
+		this.modal.style.width = this.cellSize * 10 + 'px';
+		this.modal.style.height = this.cellSize * 21 + 'px';
+
 		this.colors = {
 			'I': 'cyan',
 			'O': 'yellow',
@@ -34,6 +43,9 @@ export class View {
 
 		this.musicPlayer = document.getElementById('music');
 		this.track = document.getElementById('music-track');
+
+		this.effectPlayer = document.getElementById('effects');
+		this.effect = document.getElementById('effect-src');
 
 		// setTimeout(() => {this.stopMusic();}, 5000);
 	}
@@ -219,15 +231,30 @@ export class View {
 		this.musicPlayer.currentTime = 0;
 	}
 
+	playEffect(effect) {
+		this.effect.src = 'assets/' +effect + '.mp3';
+		this.effectPlayer.load();
+		this.effectPlayer.play();
+	}
+
 	drawMessage(message){
 		this.messages.innerHTML = message;
 
-		if (message!='Game over') {
+		if (message!='Game over' && message!='Pause') {
 			this.messages.className += ' fadeout';
+			
 			window.setTimeout(() => {
-				this.messages.innerHTML = '';
-				this.messages.className = 'messages';
+				this.undrawMessage();
 			}, 2000);
 		}
+	}
+
+	undrawMessage() {
+		this.messages.innerHTML = '';
+		this.messages.className = 'messages';
+	}
+
+	dismissModal() {
+		this.modal.className += ' hide';
 	}
 }

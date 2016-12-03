@@ -236,7 +236,7 @@
 			key: 'getRotationCollisionByHitbox',
 			value: function getRotationCollisionByHitbox(direction) {
 				var bottomEdgePosition = this.game.board.firstPopulatedRow ? this.game.board.firstPopulatedRow - 1 : 21;
-				return this.position[1] <= 0 || this.position[1] >= 9 || this.position[0] >= bottomEdgePosition;
+				return this.position[1] <= 0 || this.position[1] >= 9 || this.position[0] < 2 || this.position[0] >= bottomEdgePosition;
 			}
 		}, {
 			key: 'getRotationCollisionByBricks',
@@ -250,7 +250,7 @@
 				return rotated.some(function (brick) {
 
 					// ... is out of board
-					if (brick[0] > 21 || brick[1] < 0 && brick[1] > 9) {
+					if (brick[0] > 21 || brick[0] < 2 || brick[1] < 0 || brick[1] > 9) {
 						return true;
 					}
 
@@ -314,7 +314,7 @@
 			key: 'getRotationCollisionByHitbox',
 			value: function getRotationCollisionByHitbox(direction) {
 				var bottomEdgePosition = this.game.board.firstPopulatedRow ? this.game.board.firstPopulatedRow - 1 : 21;
-				return this.position[1] <= 0 || this.position[1] >= 8 || this.position[0] >= bottomEdgePosition;
+				return this.position[1] <= 0 || this.position[1] >= 8 || this.position[0] < 2 || this.position[0] >= bottomEdgePosition;
 			}
 		}, {
 			key: 'bricks',
@@ -1313,6 +1313,7 @@
 					window.setTimeout(function () {
 						var update = _this3.game.rowsUpdate();
 						update.delete.forEach(function (brick) {
+							// console.log('on ctrl: ' + brick.position[0] + brick.position[1]);
 							_this3.view.delete(brick.position);
 						});
 						update.draw.forEach(function (brick) {
@@ -1422,9 +1423,21 @@
 		}, {
 			key: 'delete',
 			value: function _delete(cell) {
-				var cellElem = document.querySelector('[x="' + cell[1] * this.cellSize + '"][y="' + cell[0] * this.cellSize + '"]');
-				if (cellElem) {
-					this.board.removeChild(cellElem);
+				var allCellsMatchPos = document.querySelectorAll('[x="' + cell[1] * this.cellSize + '"][y="' + cell[0] * this.cellSize + '"]');
+
+				if (allCellsMatchPos) {
+					var cellElem;
+
+					for (var _cell = 0; _cell < allCellsMatchPos.length; _cell++) {
+						if (allCellsMatchPos[_cell].parentNode == this.board) {
+							cellElem = allCellsMatchPos[_cell];
+						}
+					}
+					// console.log(allCellsMatchPos);
+					// console.log(cellElem);
+					if (cellElem) {
+						this.board.removeChild(cellElem);
+					}
 				}
 			}
 		}, {
@@ -1524,7 +1537,7 @@
 					case 'J':
 						for (var _i5 = 0; _i5 < 3; _i5++) {
 							for (var _j4 = 0; _j4 < 2; _j4++) {
-								if (_j4 === 0 && _i5 == 0 || _j4 == 1) {
+								if (_j4 === 0 && _i5 === 0 || _j4 == 1) {
 									var _brick5 = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
 									_brick5.setAttribute('width', this.cellSize * 0.8);
 									_brick5.setAttribute('height', this.cellSize * 0.8);

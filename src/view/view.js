@@ -47,9 +47,21 @@ export class View {
 	}
 
 	delete(cell) {
-		var cellElem = document.querySelector(`[x="${cell[1] * this.cellSize}"][y="${cell[0] * this.cellSize}"]`);
-		if (cellElem) {
-			this.board.removeChild(cellElem);
+		var allCellsMatchPos = document.querySelectorAll(`[x="${cell[1] * this.cellSize}"][y="${cell[0] * this.cellSize}"]`);
+
+		if (allCellsMatchPos) {
+			var cellElem;
+
+			for (let cell = 0; cell < allCellsMatchPos.length; cell++) {
+				if (allCellsMatchPos[cell].parentNode == this.board) {
+					cellElem = allCellsMatchPos[cell];
+				}
+			}
+			// console.log(allCellsMatchPos);
+			// console.log(cellElem);
+			if (cellElem) {
+				this.board.removeChild(cellElem);
+			}
 		}
 	}
 
@@ -148,7 +160,7 @@ export class View {
 			case 'J':
 				for (let i = 0; i < 3; i++) {
 					for (let j = 0; j < 2; j++) {
-						if ((j === 0 && i == 0) || j == 1) {
+						if ((j === 0 && i === 0) || j == 1) {
 							let brick = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
 							brick.setAttribute('width', this.cellSize * 0.8);
 							brick.setAttribute('height', this.cellSize * 0.8);

@@ -92,6 +92,7 @@ export class Controller {
 				() => {
 					var update = this.game.rowsUpdate();
 					update.delete.forEach((brick) => {
+						// console.log('on ctrl: ' + brick.position[0] + brick.position[1]);
 						this.view.delete(brick.position);
 					});
 					update.draw.forEach((brick) => {

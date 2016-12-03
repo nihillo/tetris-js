@@ -134,7 +134,7 @@ export class Tetromino {
 
 	getRotationCollisionByHitbox(direction) {
 		var bottomEdgePosition = this.game.board.firstPopulatedRow ? this.game.board.firstPopulatedRow - 1 : 21;
-		return (this.position[1] <= 0 || this.position[1] >= 9 || this.position[0] >= bottomEdgePosition);
+		return (this.position[1] <= 0 || this.position[1] >= 9 || this.position[0] < 2 || this.position[0] >= bottomEdgePosition) ;
 	}
 
 	getRotationCollisionByBricks(direction) {
@@ -145,7 +145,7 @@ export class Tetromino {
 		return rotated.some((brick) => {
 			
 			// ... is out of board
-			if (brick[0] > 21 || brick[1] < 0 && brick[1] > 9) {
+			if (brick[0] > 21 || brick[0] < 2 || brick[1] < 0 || brick[1] > 9) {
 				return true;
 			}
 
@@ -225,7 +225,7 @@ export class I extends Tetromino {
 
 	getRotationCollisionByHitbox(direction) {
 		var bottomEdgePosition = this.game.board.firstPopulatedRow ? this.game.board.firstPopulatedRow - 1 : 21;
-		return (this.position[1] <= 0 || this.position[1] >= 8 || this.position[0] >= bottomEdgePosition);
+		return (this.position[1] <= 0 || this.position[1] >= 8 || this.position[0] < 2 || this.position[0] >= bottomEdgePosition);
 	}
 }
 

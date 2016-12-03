@@ -798,6 +798,8 @@
 			// Speed expressed as number of time units that movement takes to be done
 			this.speedTable = [10, 8, 6, 5, 4, 3, 2, 1, 0.8, 0.6, 0.4, 0.8, 0.2, 0.1, 0.08, 0.06, 0.04, 0.03, 0.02, 0.01];
 
+			this.trackList = ['hungarian', 'little-g', 'can-can', 'moonlight', 'allaturca', 'ninth'];
+
 			this.score = 0;
 
 			this.current = null;
@@ -852,7 +854,13 @@
 									scoreDelta *= 2;
 								});
 
+								var currLevel = [];
+								currLevel.push(this.level);
+								currLevel = currLevel.slice(0);
+								currLevel = currLevel[0];
+
 								this.score += scoreDelta;
+
 								if (!response.rowsUpdate) {
 									response.rowsUpdate = true;
 								}
@@ -860,8 +868,13 @@
 								if (!response.score) {
 									response.score = this.score;
 								}
-								if (!response.level) {
+
+								if (!response.levelup && this.level != currLevel) {
+									response.levelup = true;
 									response.level = this.level;
+									if (this.level < this.trackList.length) {
+										response.track = this.trackList[this.level];
+									}
 								}
 							}
 
@@ -1036,7 +1049,7 @@
 		}, {
 			key: 'level',
 			get: function get() {
-				return this.score ? Math.floor(this.score / 128) : 0;
+				return this.score ? Math.floor(this.score / 16) : 0;
 			}
 		}, {
 			key: 'speed',
@@ -1304,7 +1317,8 @@
 				}
 
 				if (result && result.finish) {
-					console.log('Game Over');
+					this.view.drawMessage('Game over');
+					this.view.stopMusic();
 					this.game.stop();
 					this.stopFall();
 				}
@@ -1338,9 +1352,14 @@
 					this.view.drawScore(result.score);
 				}
 
-				if (result && result.level) {
+				if (result && result.levelup) {
 					this.view.drawLevel(result.level);
+					this.view.drawMessage('Level up');
 					this.resetFall();
+				}
+
+				if (result && result.track) {
+					this.view.setMusic(result.track);
 				}
 
 				if (result && result.next) {
@@ -1402,6 +1421,13 @@
 
 			this.drawLevel(0);
 			this.drawScore(0);
+
+			this.messages = document.getElementById('messages');
+
+			this.musicPlayer = document.getElementById('music');
+			this.track = document.getElementById('music-track');
+
+			// setTimeout(() => {this.stopMusic();}, 5000);
 		}
 
 		_createClass(View, [{
@@ -1577,6 +1603,34 @@
 			value: function drawScore(score) {
 				var scoreElm = document.getElementById('score');
 				scoreElm.innerHTML = score;
+			}
+		}, {
+			key: 'setMusic',
+			value: function setMusic(track) {
+				this.track.src = 'assets/' + track + '.mp3';
+				this.musicPlayer.load();
+				this.musicPlayer.play();
+			}
+		}, {
+			key: 'stopMusic',
+			value: function stopMusic() {
+				this.musicPlayer.pause();
+				this.musicPlayer.currentTime = 0;
+			}
+		}, {
+			key: 'drawMessage',
+			value: function drawMessage(message) {
+				var _this = this;
+
+				this.messages.innerHTML = message;
+
+				if (message != 'Game over') {
+					this.messages.className += ' fadeout';
+					window.setTimeout(function () {
+						_this.messages.innerHTML = '';
+						_this.messages.className = 'messages';
+					}, 2000);
+				}
 			}
 		}]);
 

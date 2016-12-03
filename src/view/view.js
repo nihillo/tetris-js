@@ -29,6 +29,13 @@ export class View {
 
 		this.drawLevel(0);
 		this.drawScore(0);
+
+		this.messages = document.getElementById('messages');
+
+		this.musicPlayer = document.getElementById('music');
+		this.track = document.getElementById('music-track');
+
+		// setTimeout(() => {this.stopMusic();}, 5000);
 	}
 
 	draw(cell, type) {
@@ -199,5 +206,28 @@ export class View {
 	drawScore(score) {
 		var scoreElm = document.getElementById('score');
 		scoreElm.innerHTML = score;
+	}
+
+	setMusic(track) {
+		this.track.src = 'assets/' +track + '.mp3';
+		this.musicPlayer.load();
+		this.musicPlayer.play();
+	}
+
+	stopMusic() {
+		this.musicPlayer.pause();
+		this.musicPlayer.currentTime = 0;
+	}
+
+	drawMessage(message){
+		this.messages.innerHTML = message;
+
+		if (message!='Game over') {
+			this.messages.className += ' fadeout';
+			window.setTimeout(() => {
+				this.messages.innerHTML = '';
+				this.messages.className = 'messages';
+			}, 2000);
+		}
 	}
 }

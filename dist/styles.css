@@ -1,6 +1,7 @@
 body {
 	font-family: 'Days One', sans-serif;
 	color: white;
+	overflow-y: hidden;
 }
 
 #container {
@@ -38,4 +39,21 @@ svg {
 
 .subpanel h5 {
 	margin-top: 20px;
+}
+
+audio {
+	visibility: hidden;
+}
+
+.messages {
+	position: relative;
+	bottom: 50vh;
+	font-size: 2em;
+	text-transform: uppercase;
+	opacity: 1;
+}
+
+.fadeout {
+	opacity: 0;
+	transition: opacity 1s ease-in-out;
 }

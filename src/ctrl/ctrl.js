@@ -82,7 +82,8 @@ export class Controller {
 		}
 
 		if (result && result.finish) {
-			console.log('Game Over');
+			this.view.drawMessage('Game over');
+			this.view.stopMusic();
 			this.game.stop();
 			this.stopFall();
 		}
@@ -119,9 +120,14 @@ export class Controller {
 			this.view.drawScore(result.score);
 		}
 
-		if (result && result.level) {
+		if (result && result.levelup) {
 			this.view.drawLevel(result.level);
+			this.view.drawMessage('Level up');
 			this.resetFall();
+		}
+
+		if (result && result.track) {
+			this.view.setMusic(result.track);
 		}
 
 		if (result && result.next) {

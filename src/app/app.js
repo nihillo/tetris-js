@@ -10,6 +10,15 @@ export class Tetris {
 		// Speed expressed as number of time units that movement takes to be done
 		this.speedTable = [10, 8, 6, 5, 4, 3, 2, 1, 0.8, 0.6, 0.4, 0.8, 0.2, 0.1, 0.08, 0.06, 0.04, 0.03, 0.02, 0.01];
 
+		this.trackList = [
+			'hungarian',
+			'little-g',
+			'can-can',
+			'moonlight',
+			'allaturca',
+			'ninth'
+		];
+		
 		this.score = 0;
 
 		this.current = null;
@@ -19,7 +28,7 @@ export class Tetris {
 	}
 
 	get level() {
-		return this.score ? Math.floor(this.score / 128) : 0;
+		return this.score ? Math.floor(this.score / 16) : 0;
 	}
 
 	get speed() {
@@ -64,11 +73,24 @@ export class Tetris {
 							scoreDelta *= 2;
 						});
 
+						var currLevel = [];
+						currLevel.push(this.level);
+						currLevel = currLevel.slice(0);
+						currLevel = currLevel[0];
+
 						this.score += scoreDelta;
+
 						if (!response.rowsUpdate) {response.rowsUpdate = true;}
 
 						if (!response.score) {response.score = this.score;}
-						if (!response.level) {response.level = this.level;}
+
+						if (!response.levelup && (this.level != currLevel)) {
+							response.levelup = true;
+							response.level = this.level;
+							if (this.level < this.trackList.length) {
+								response.track = this.trackList[this.level];
+							}
+						}
 					} 
 
 

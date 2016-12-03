@@ -1,9 +1,38 @@
+body {
+	font-family: 'Days One', sans-serif;
+	color: white;
+}
+
 #container {
 	text-align: center;
 }
 
 svg {
-	margin-top: 40px;
 	background-color: #111;
 	filter: brightness(0.8) contrast(0.8) hue-rotate(-15deg);
+}
+
+.panel {
+	position: relative;
+	margin-left: auto;
+	margin-right: auto;
+	margin-bottom: 0;
+	border: 0;
+	background-color: #303030; 
+	z-index: 10;
+	display: flex;
+	flex-flow: row nowrap;
+	justify-content: space-between;
+}
+
+.subpanel {
+	padding: 10px;
+}
+
+.subpanel h4 {
+	margin: 0;
+}
+
+.subpanel h5 {
+	margin-top: 20px;
 }

@@ -796,10 +796,9 @@
 			this.running = false;
 
 			// Speed expressed as number of time units that movement takes to be done
-			var speedTable = [10, 9, 8, 7, 6, 5];
+			this.speedTable = [10, 8, 6, 5, 4, 3, 2, 1, 0.8, 0.6, 0.4, 0.8, 0.2, 0.1, 0.08, 0.06, 0.04, 0.03, 0.02, 0.01];
 
-			this.level = 0;
-			this.speed = speedTable[this.level];
+			this.score = 0;
 
 			this.current = null;
 			this.next = this.generateNextType();
@@ -807,15 +806,13 @@
 			this.noRemove = false;
 		}
 
-		// GAME ALGORITHMS
-
-
 		_createClass(Tetris, [{
 			key: 'start',
+
+
+			// GAME ALGORITHMS
 			value: function start() {
 				this.running = true;
-				this.current = this.generateTetromino(this.next);
-				this.next = this.generateNextType();
 			}
 		}, {
 			key: 'stop',
@@ -844,15 +841,27 @@
 								if (!response.delete) {
 									response.delete = [];
 								}
+
+								var scoreDelta = 1;
 								rowsComplete.forEach(function (row) {
 									row.cells.forEach(function (cell) {
 										response.delete.push({ position: cell.position });
 										cell.full = false;
 									});
 									row.update = true;
+									scoreDelta *= 2;
 								});
+
+								this.score += scoreDelta;
 								if (!response.rowsUpdate) {
 									response.rowsUpdate = true;
+								}
+
+								if (!response.score) {
+									response.score = this.score;
+								}
+								if (!response.level) {
+									response.level = this.level;
 								}
 							}
 
@@ -978,7 +987,9 @@
 					} else {
 						// Do stuff on Game Over
 						this.stop();
-						console.log('Game Over');
+						if (!response.finish) {
+							response.finish = true;
+						}
 					}
 					return response;
 				}
@@ -1021,6 +1032,16 @@
 
 
 				return tetro.TetrominoFactory.getInstance(type, this);
+			}
+		}, {
+			key: 'level',
+			get: function get() {
+				return this.score ? Math.floor(this.score / 128) : 0;
+			}
+		}, {
+			key: 'speed',
+			get: function get() {
+				return this.speedTable[this.level];
 			}
 		}]);
 
@@ -1125,7 +1146,7 @@
 					row = this.rows.indexOf(firstPopulated);
 				}
 
-				return row;
+				return row ? row : 22;
 			}
 		}]);
 
@@ -1202,9 +1223,10 @@
 
 			this.setControls();
 
-			// TEST ---------------------------
+			// INIT GAME ---------------------------
 			this.game.start();
-			this.fall();
+			this.operate('nextTetromino');
+			this.cycle = this.fall();
 		}
 
 		// CONTROLS
@@ -1248,9 +1270,20 @@
 			value: function fall() {
 				var _this2 = this;
 
-				window.setInterval(function () {
+				return window.setInterval(function () {
 					_this2.operate('move', 'down');
 				}, this.game.speed * this.timeBase);
+			}
+		}, {
+			key: 'stopFall',
+			value: function stopFall() {
+				clearInterval(this.cycle);
+			}
+		}, {
+			key: 'resetFall',
+			value: function resetFall() {
+				this.stopFall();
+				this.cycle = this.fall();
 			}
 		}, {
 			key: 'operate',
@@ -1270,6 +1303,12 @@
 						result = this.game.nextTetromino();
 				}
 
+				if (result && result.finish) {
+					console.log('Game Over');
+					this.game.stop();
+					this.stopFall();
+				}
+
 				if (result && result.rowsUpdate) {
 					window.setTimeout(function () {
 						var update = _this3.game.rowsUpdate();
@@ -1280,10 +1319,6 @@
 							_this3.view.draw(brick.position, brick.type);
 						});
 					}, 200);
-				}
-
-				if (result && result.nextTetromino) {
-					result = this.operate('nextTetromino');
 				}
 
 				if (result && result.delete) {
@@ -1298,8 +1333,21 @@
 					});
 				}
 
+				if (result && result.score) {
+					this.view.drawScore(result.score);
+				}
+
+				if (result && result.level) {
+					this.view.drawLevel(result.level);
+					this.resetFall();
+				}
+
 				if (result && result.next) {
 					this.view.drawNext(result.next);
+				}
+
+				if (result && result.nextTetromino) {
+					result = this.operate('nextTetromino');
 				}
 			}
 		}]);
@@ -1337,8 +1385,22 @@
 			};
 
 			this.board = document.getElementById('board');
+
 			this.board.setAttribute('width', this.cellSize * 10);
 			this.board.setAttribute('height', this.cellSize * 22);
+
+			this.panel = document.getElementById('panel');
+
+			this.panel.style.width = this.cellSize * 10 + 'px';
+			this.panel.style.height = this.cellSize * 3 + 'px';
+			this.panel.style.top = this.cellSize * 2 + 'px';
+
+			this.next = document.getElementById('next');
+			this.next.setAttribute('width', this.cellSize * 4);
+			this.next.setAttribute('height', this.cellSize * 2);
+
+			this.drawLevel(0);
+			this.drawScore(0);
 		}
 
 		_createClass(View, [{
@@ -1366,8 +1428,143 @@
 				}
 			}
 		}, {
+			key: 'drawLevel',
+			value: function drawLevel(level) {
+				var levelElm = document.getElementById('level');
+				levelElm.innerHTML = level;
+			}
+		}, {
 			key: 'drawNext',
-			value: function drawNext(type) {}
+			value: function drawNext(type) {
+				this.next.innerHTML = '';
+				var color = this.colors[type];
+				var tetro = document.createElementNS("http://www.w3.org/2000/svg", 'g');
+				tetro.setAttribute('fill', color);
+
+				switch (type) {
+					case 'I':
+						for (var i = 0; i < 4; i++) {
+							var brick = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+							brick.setAttribute('width', this.cellSize * 0.8);
+							brick.setAttribute('height', this.cellSize * 0.8);
+							brick.setAttribute('x', this.cellSize * 0.4 + i * this.cellSize * 0.8);
+							brick.setAttribute('y', this.cellSize * 0.6);
+							brick.setAttribute('rx', this.cellSize * 0.8 / 10);
+							brick.setAttribute('ry', this.cellSize * 0.8 / 10);
+							brick.setAttribute('fill', color);
+							tetro.appendChild(brick);
+						}
+						break;
+					case 'O':
+						for (var _i = 0; _i < 2; _i++) {
+							for (var j = 0; j < 2; j++) {
+								var _brick = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+								_brick.setAttribute('width', this.cellSize * 0.8);
+								_brick.setAttribute('height', this.cellSize * 0.8);
+								_brick.setAttribute('x', this.cellSize * 1.2 + _i * this.cellSize * 0.8);
+								_brick.setAttribute('y', this.cellSize * 0.2 + j * this.cellSize * 0.8);
+								_brick.setAttribute('rx', this.cellSize * 0.8 / 10);
+								_brick.setAttribute('ry', this.cellSize * 0.8 / 10);
+								_brick.setAttribute('fill', color);
+								tetro.appendChild(_brick);
+							}
+						}
+						break;
+					case 'T':
+						for (var _i2 = 0; _i2 < 3; _i2++) {
+							for (var _j = 0; _j < 2; _j++) {
+								if (_j === 0 && _i2 == 1 || _j == 1) {
+									var _brick2 = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+									_brick2.setAttribute('width', this.cellSize * 0.8);
+									_brick2.setAttribute('height', this.cellSize * 0.8);
+									_brick2.setAttribute('x', this.cellSize * 0.8 + _i2 * this.cellSize * 0.8);
+									_brick2.setAttribute('y', this.cellSize * 0.2 + _j * this.cellSize * 0.8);
+									_brick2.setAttribute('rx', this.cellSize * 0.8 / 10);
+									_brick2.setAttribute('ry', this.cellSize * 0.8 / 10);
+									_brick2.setAttribute('fill', color);
+									tetro.appendChild(_brick2);
+								}
+							}
+						}
+						break;
+					case 'S':
+						for (var _i3 = 0; _i3 < 3; _i3++) {
+							for (var _j2 = 0; _j2 < 2; _j2++) {
+								if (_j2 === 0 && (_i3 == 1 || _i3 == 2) || _j2 === 1 && (_i3 == 0 || _i3 == 1)) {
+									var _brick3 = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+									_brick3.setAttribute('width', this.cellSize * 0.8);
+									_brick3.setAttribute('height', this.cellSize * 0.8);
+									_brick3.setAttribute('x', this.cellSize * 0.8 + _i3 * this.cellSize * 0.8);
+									_brick3.setAttribute('y', this.cellSize * 0.2 + _j2 * this.cellSize * 0.8);
+									_brick3.setAttribute('rx', this.cellSize * 0.8 / 10);
+									_brick3.setAttribute('ry', this.cellSize * 0.8 / 10);
+									_brick3.setAttribute('fill', color);
+									tetro.appendChild(_brick3);
+								}
+							}
+						}
+						break;
+					case 'Z':
+						for (var _i4 = 0; _i4 < 3; _i4++) {
+							for (var _j3 = 0; _j3 < 2; _j3++) {
+								if (_j3 === 0 && (_i4 === 0 || _i4 == 1) || _j3 === 1 && (_i4 == 1 || _i4 == 2)) {
+									var _brick4 = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+									_brick4.setAttribute('width', this.cellSize * 0.8);
+									_brick4.setAttribute('height', this.cellSize * 0.8);
+									_brick4.setAttribute('x', this.cellSize * 0.8 + _i4 * this.cellSize * 0.8);
+									_brick4.setAttribute('y', this.cellSize * 0.2 + _j3 * this.cellSize * 0.8);
+									_brick4.setAttribute('rx', this.cellSize * 0.8 / 10);
+									_brick4.setAttribute('ry', this.cellSize * 0.8 / 10);
+									_brick4.setAttribute('fill', color);
+									tetro.appendChild(_brick4);
+								}
+							}
+						}
+						break;
+					case 'J':
+						for (var _i5 = 0; _i5 < 3; _i5++) {
+							for (var _j4 = 0; _j4 < 2; _j4++) {
+								if (_j4 === 0 && _i5 == 0 || _j4 == 1) {
+									var _brick5 = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+									_brick5.setAttribute('width', this.cellSize * 0.8);
+									_brick5.setAttribute('height', this.cellSize * 0.8);
+									_brick5.setAttribute('x', this.cellSize * 0.8 + _i5 * this.cellSize * 0.8);
+									_brick5.setAttribute('y', this.cellSize * 0.2 + _j4 * this.cellSize * 0.8);
+									_brick5.setAttribute('rx', this.cellSize * 0.8 / 10);
+									_brick5.setAttribute('ry', this.cellSize * 0.8 / 10);
+									_brick5.setAttribute('fill', color);
+									tetro.appendChild(_brick5);
+								}
+							}
+						}
+						break;
+					case 'L':
+						for (var _i6 = 0; _i6 < 3; _i6++) {
+							for (var _j5 = 0; _j5 < 2; _j5++) {
+								if (_j5 === 0 && _i6 == 2 || _j5 == 1) {
+									var _brick6 = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+									_brick6.setAttribute('width', this.cellSize * 0.8);
+									_brick6.setAttribute('height', this.cellSize * 0.8);
+									_brick6.setAttribute('x', this.cellSize * 0.8 + _i6 * this.cellSize * 0.8);
+									_brick6.setAttribute('y', this.cellSize * 0.2 + _j5 * this.cellSize * 0.8);
+									_brick6.setAttribute('rx', this.cellSize * 0.8 / 10);
+									_brick6.setAttribute('ry', this.cellSize * 0.8 / 10);
+									_brick6.setAttribute('fill', color);
+									tetro.appendChild(_brick6);
+								}
+							}
+						}
+						break;
+				}
+
+				this.next.appendChild(tetro);
+			}
+		}, {
+			key: 'drawScore',
+			value: function drawScore(score) {
+				var scoreElm = document.getElementById('score');
+				scoreElm.innerHTML = score;
+			}
 		}]);
 
 		return View;

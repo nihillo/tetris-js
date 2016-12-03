@@ -8,25 +8,27 @@ export class Tetris {
 		this.running = false;
 
 		// Speed expressed as number of time units that movement takes to be done
-		var speedTable = [10, 9, 8, 7, 6, 5];
+		this.speedTable = [10, 8, 6, 5, 4, 3, 2, 1, 0.8, 0.6, 0.4, 0.8, 0.2, 0.1, 0.08, 0.06, 0.04, 0.03, 0.02, 0.01];
 
-		this.level = 0;
-		this.speed = speedTable[this.level];
+		this.score = 0;
 
 		this.current = null;
 		this.next = this.generateNextType();
 
 		this.noRemove = false;
-
-
 	}
 
+	get level() {
+		return this.score ? Math.floor(this.score / 128) : 0;
+	}
+
+	get speed() {
+		return this.speedTable[this.level];
+	}
 
 	// GAME ALGORITHMS
 	start() {
 		this.running = true;
-		this.current = this.generateTetromino(this.next);
-		this.next = this.generateNextType();
 	}
 
 	stop() {
@@ -50,15 +52,23 @@ export class Tetris {
 
 					var rowsComplete = this.board.checkRowsCompletion(this.current.rows);
 					if (rowsComplete) {
-						if (!response.delete) {response.delete = [];} 
+						if (!response.delete) {response.delete = [];}
+						
+						var scoreDelta = 1;
 						rowsComplete.forEach((row) => {
 							row.cells.forEach((cell) => {
 								response.delete.push({position: cell.position});
 								cell.full = false;
 							});
 							row.update = true;
+							scoreDelta *= 2;
 						});
+
+						this.score += scoreDelta;
 						if (!response.rowsUpdate) {response.rowsUpdate = true;}
+
+						if (!response.score) {response.score = this.score;}
+						if (!response.level) {response.level = this.level;}
 					} 
 
 
@@ -168,7 +178,7 @@ export class Tetris {
 			} else {
 				// Do stuff on Game Over
 				this.stop();
-				console.log('Game Over');
+				if (!response.finish) {response.finish = true;}
 			} 
 			return response;
 		}
@@ -245,7 +255,7 @@ class Board {
 			row = this.rows.indexOf(firstPopulated);
 		}
 
-		return row;
+		return row ? row : 22;
 	}
 
 	checkRowsCompletion(rows) {

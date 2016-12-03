@@ -13,9 +13,10 @@ export class Controller {
 		
 	
 
-		// TEST ---------------------------
+		// INIT GAME ---------------------------
 		this.game.start();
-		this.fall();
+		this.operate('nextTetromino');
+		this.cycle = this.fall();
 	}
 
 	// CONTROLS
@@ -49,12 +50,21 @@ export class Controller {
 
 	// MOVEMENT METHODS
 	fall() {
-		window.setInterval(
+		return window.setInterval(
 			() => {
 				this.operate('move', 'down');
 			},
 			this.game.speed * this.timeBase
 		);
+	}
+
+	stopFall() {
+		clearInterval(this.cycle);
+	}
+
+	resetFall() {
+		this.stopFall();
+		this.cycle = this.fall();
 	}
 
 	operate(operation, direction) {
@@ -70,7 +80,12 @@ export class Controller {
 			case 'nextTetromino':
 				result = this.game.nextTetromino();
 		}
-		
+
+		if (result && result.finish) {
+			console.log('Game Over');
+			this.game.stop();
+			this.stopFall();
+		}
 
 		if (result && result.rowsUpdate) {
 			window.setTimeout (
@@ -87,10 +102,6 @@ export class Controller {
 			);
 		}
 
-		if (result && result.nextTetromino) {
-			result = this.operate('nextTetromino');
-		}
-
 		if (result && result.delete) {
 			result.delete.forEach((brick) => {
 				this.view.delete(brick.position);
@@ -103,9 +114,21 @@ export class Controller {
 			});
 		}
 		
-		
+		if (result && result.score) {
+			this.view.drawScore(result.score);
+		}
+
+		if (result && result.level) {
+			this.view.drawLevel(result.level);
+			this.resetFall();
+		}
+
 		if (result && result.next) {
 			this.view.drawNext(result.next);
+		}
+
+		if (result && result.nextTetromino) {
+			result = this.operate('nextTetromino');
 		}
 	}
 }
